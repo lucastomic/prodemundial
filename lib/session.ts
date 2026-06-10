@@ -20,10 +20,10 @@ export function setUserCookie(id: string): void {
   cookies().set(USER_COOKIE, id, COOKIE_OPTS);
 }
 
-export function getCurrentUser(): User | null {
+export async function getCurrentUser(): Promise<User | null> {
   const id = cookies().get(USER_COOKIE)?.value;
   if (!id) return null;
-  return getUser(id) ?? null;
+  return (await getUser(id)) ?? null;
 }
 
 export function clearUserCookie(): void {

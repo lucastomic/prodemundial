@@ -7,12 +7,12 @@ import { getCurrentUser, isLocked } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-export default function PorraPage() {
-  const user = getCurrentUser();
+export default async function PorraPage() {
+  const user = await getCurrentUser();
   if (!user) redirect("/");
 
-  const prediction = getPrediction(user.id);
-  const alreadySaved = hasPrediction(user.id);
+  const prediction = await getPrediction(user.id);
+  const alreadySaved = await hasPrediction(user.id);
   const locked = isLocked();
   // La porra es definitiva: tras guardarla queda en solo lectura.
   const readOnly = locked || alreadySaved;

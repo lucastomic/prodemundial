@@ -26,18 +26,18 @@ export async function createUserAction(formData: FormData): Promise<void> {
   if (!name) redirect("/?error=nombre");
 
   const id = randomUUID();
-  createUser(id, name, email || undefined);
+  await createUser(id, name, email || undefined);
   setUserCookie(id);
   redirect("/porra");
 }
 
 // Guardar la porra del usuario actual (con saneo del cuadro).
 export async function savePredictionAction(pred: Prediction): Promise<{ ok: boolean; error?: string }> {
-  const user = getCurrentUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "No has iniciado sesión." };
   if (isLocked()) return { ok: false, error: "Las porras están cerradas." };
   // La porra es definitiva: una vez guardada no se puede modificar.
-  if (hasPrediction(user.id))
+  if (await hasPrediction(user.id))
     return {
       ok: false,
       error: "Tu porra ya está guardada y no se puede modificar.",
@@ -48,7 +48,7 @@ export async function savePredictionAction(pred: Prediction): Promise<{ ok: bool
     thirds: pred.thirds.slice(0, 8),
     bracket: pruneBracket(pred.groups, pred.thirds, pred.bracket),
   };
-  dbSavePrediction(user.id, cleaned);
+  await dbSavePrediction(user.id, cleaned);
   return { ok: true };
 }
 
@@ -75,6 +75,6 @@ export async function saveResultsAction(pred: Prediction): Promise<{ ok: boolean
     thirds: pred.thirds.slice(0, 8),
     bracket: pruneBracket(pred.groups, pred.thirds, pred.bracket),
   };
-  dbSaveResults(cleaned);
+  await dbSaveResults(cleaned);
   return { ok: true };
 }

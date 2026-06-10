@@ -12,12 +12,12 @@ export const metadata: Metadata = {
 // Aplica el tema guardado antes de pintar para evitar parpadeo (FOUC).
 const themeScript = `(function(){try{var t=localStorage.getItem('porra2026:theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);}else{document.documentElement.setAttribute('data-theme','light');}}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = getCurrentUser();
+  const user = await getCurrentUser();
   return (
     <html lang="es" data-theme="light">
       <head>

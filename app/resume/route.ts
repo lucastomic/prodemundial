@@ -4,7 +4,7 @@ import { getUser } from "@/lib/db";
 // Enlace para retomar la porra desde otro dispositivo: /resume?t=<token>
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const token = req.nextUrl.searchParams.get("t") || "";
-  const user = token ? getUser(token) : undefined;
+  const user = token ? await getUser(token) : undefined;
   if (!user) {
     return NextResponse.redirect(new URL("/?error=enlace", req.url));
   }

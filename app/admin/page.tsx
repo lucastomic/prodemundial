@@ -6,7 +6,7 @@ import { Banner } from "../components/Banner";
 
 export const dynamic = "force-dynamic";
 
-export default function AdminPage({
+export default async function AdminPage({
   searchParams,
 }: {
   searchParams: { error?: string };
@@ -66,7 +66,7 @@ export default function AdminPage({
     );
   }
 
-  const results = getResults();
+  const results = await getResults();
 
   return (
     <>

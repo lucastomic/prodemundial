@@ -10,11 +10,11 @@ export const dynamic = "force-dynamic";
 const MEDALS = ["g", "s", "b"];
 const MEDAL_EMOJI = ["🥇", "🥈", "🥉"];
 
-export default function RankingPage() {
-  const results = getResults();
-  const resultsReady = hasResults();
-  const me = getCurrentUser();
-  const entries = getAllPredictions();
+export default async function RankingPage() {
+  const results = await getResults();
+  const resultsReady = await hasResults();
+  const me = await getCurrentUser();
+  const entries = await getAllPredictions();
 
   const rows = entries
     .map(({ user, prediction }) => ({

@@ -30,12 +30,12 @@ const HOW = [
   },
 ];
 
-export default function HomePage({
+export default async function HomePage({
   searchParams,
 }: {
   searchParams: { error?: string };
 }) {
-  const user = getCurrentUser();
+  const user = await getCurrentUser();
   const locked = isLocked();
 
   return (
