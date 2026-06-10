@@ -1,15 +1,15 @@
 // ============================================================================
-// SEED de equipos del Mundial 2026 (48 equipos, 12 grupos A–L de 4 equipos).
+// Equipos del Mundial 2026 (48 equipos, 12 grupos A–L de 4 equipos).
 //
-// ⚠️  IMPORTANTE: estos datos son una plantilla de partida. ANTES de abrir las
-//     porras, el administrador DEBE verificar y editar los grupos/equipos para
-//     que coincidan EXACTAMENTE con el sorteo oficial (incluidas las plazas de
-//     repesca/playoff). Cambiar aquí los nombres, banderas y reparto de grupos.
+// Datos del SORTEO OFICIAL (5 dic 2025, Washington D.C.), completado con los
+// ganadores de las repescas de marzo 2026. Anfitriones en cabeza de grupo:
+// México (A), Canadá (B), Estados Unidos (D).
 //
-// Estructura del torneo 2026:
-//   - 48 equipos, 12 grupos (A–L) de 4 equipos.
-//   - Avanzan a dieciseisavos: los 2 primeros de cada grupo (24) + los 8
-//     mejores terceros (de entre los 12 terceros) = 32 equipos.
+// Formato: avanzan a dieciseisavos los 2 primeros de cada grupo (24) + los 8
+// mejores terceros (de entre los 12) = 32 equipos.
+//
+// Nota: el orden dentro de cada grupo es solo el de presentación inicial; cada
+// usuario lo reordena en su porra.
 // ============================================================================
 
 export type Team = {
@@ -25,79 +25,78 @@ export const GROUPS = [
 
 export type GroupId = (typeof GROUPS)[number];
 
-// 4 equipos por grupo. El orden aquí es solo el orden de presentación inicial.
 export const TEAMS: Team[] = [
   // Grupo A
   { id: "mex", name: "México", flag: "🇲🇽", group: "A" },
-  { id: "ned", name: "Países Bajos", flag: "🇳🇱", group: "A" },
+  { id: "rsa", name: "Sudáfrica", flag: "🇿🇦", group: "A" },
   { id: "kor", name: "Corea del Sur", flag: "🇰🇷", group: "A" },
-  { id: "gha", name: "Ghana", flag: "🇬🇭", group: "A" },
+  { id: "cze", name: "Chequia", flag: "🇨🇿", group: "A" },
 
   // Grupo B
   { id: "can", name: "Canadá", flag: "🇨🇦", group: "B" },
-  { id: "cro", name: "Croacia", flag: "🇭🇷", group: "B" },
-  { id: "jpn", name: "Japón", flag: "🇯🇵", group: "B" },
-  { id: "civ", name: "Costa de Marfil", flag: "🇨🇮", group: "B" },
+  { id: "sui", name: "Suiza", flag: "🇨🇭", group: "B" },
+  { id: "qat", name: "Catar", flag: "🇶🇦", group: "B" },
+  { id: "bih", name: "Bosnia y Herzegovina", flag: "🇧🇦", group: "B" },
 
   // Grupo C
-  { id: "usa", name: "Estados Unidos", flag: "🇺🇸", group: "C" },
-  { id: "bel", name: "Bélgica", flag: "🇧🇪", group: "C" },
-  { id: "ecu", name: "Ecuador", flag: "🇪🇨", group: "C" },
-  { id: "qat", name: "Catar", flag: "🇶🇦", group: "C" },
+  { id: "bra", name: "Brasil", flag: "🇧🇷", group: "C" },
+  { id: "mar", name: "Marruecos", flag: "🇲🇦", group: "C" },
+  { id: "hai", name: "Haití", flag: "🇭🇹", group: "C" },
+  { id: "sco", name: "Escocia", flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", group: "C" },
 
   // Grupo D
-  { id: "arg", name: "Argentina", flag: "🇦🇷", group: "D" },
-  { id: "sui", name: "Suiza", flag: "🇨🇭", group: "D" },
+  { id: "usa", name: "Estados Unidos", flag: "🇺🇸", group: "D" },
+  { id: "par", name: "Paraguay", flag: "🇵🇾", group: "D" },
   { id: "aus", name: "Australia", flag: "🇦🇺", group: "D" },
-  { id: "nga", name: "Nigeria", flag: "🇳🇬", group: "D" },
+  { id: "tur", name: "Turquía", flag: "🇹🇷", group: "D" },
 
   // Grupo E
-  { id: "fra", name: "Francia", flag: "🇫🇷", group: "E" },
-  { id: "uru", name: "Uruguay", flag: "🇺🇾", group: "E" },
-  { id: "irn", name: "Irán", flag: "🇮🇷", group: "E" },
-  { id: "rsa", name: "Sudáfrica", flag: "🇿🇦", group: "E" },
+  { id: "ger", name: "Alemania", flag: "🇩🇪", group: "E" },
+  { id: "cuw", name: "Curazao", flag: "🇨🇼", group: "E" },
+  { id: "civ", name: "Costa de Marfil", flag: "🇨🇮", group: "E" },
+  { id: "ecu", name: "Ecuador", flag: "🇪🇨", group: "E" },
 
   // Grupo F
-  { id: "esp", name: "España", flag: "🇪🇸", group: "F" },
-  { id: "col", name: "Colombia", flag: "🇨🇴", group: "F" },
-  { id: "ksa", name: "Arabia Saudí", flag: "🇸🇦", group: "F" },
-  { id: "nzl", name: "Nueva Zelanda", flag: "🇳🇿", group: "F" },
+  { id: "ned", name: "Países Bajos", flag: "🇳🇱", group: "F" },
+  { id: "jpn", name: "Japón", flag: "🇯🇵", group: "F" },
+  { id: "tun", name: "Túnez", flag: "🇹🇳", group: "F" },
+  { id: "swe", name: "Suecia", flag: "🇸🇪", group: "F" },
 
   // Grupo G
-  { id: "bra", name: "Brasil", flag: "🇧🇷", group: "G" },
-  { id: "ger", name: "Alemania", flag: "🇩🇪", group: "G" },
+  { id: "bel", name: "Bélgica", flag: "🇧🇪", group: "G" },
   { id: "egy", name: "Egipto", flag: "🇪🇬", group: "G" },
-  { id: "pan", name: "Panamá", flag: "🇵🇦", group: "G" },
+  { id: "irn", name: "Irán", flag: "🇮🇷", group: "G" },
+  { id: "nzl", name: "Nueva Zelanda", flag: "🇳🇿", group: "G" },
 
   // Grupo H
-  { id: "eng", name: "Inglaterra", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", group: "H" },
-  { id: "sen", name: "Senegal", flag: "🇸🇳", group: "H" },
-  { id: "mar", name: "Marruecos", flag: "🇲🇦", group: "H" },
-  { id: "jor", name: "Jordania", flag: "🇯🇴", group: "H" },
+  { id: "esp", name: "España", flag: "🇪🇸", group: "H" },
+  { id: "cpv", name: "Cabo Verde", flag: "🇨🇻", group: "H" },
+  { id: "ksa", name: "Arabia Saudí", flag: "🇸🇦", group: "H" },
+  { id: "uru", name: "Uruguay", flag: "🇺🇾", group: "H" },
 
   // Grupo I
-  { id: "por", name: "Portugal", flag: "🇵🇹", group: "I" },
-  { id: "mex2", name: "Austria", flag: "🇦🇹", group: "I" },
-  { id: "tun", name: "Túnez", flag: "🇹🇳", group: "I" },
-  { id: "uzb", name: "Uzbekistán", flag: "🇺🇿", group: "I" },
+  { id: "fra", name: "Francia", flag: "🇫🇷", group: "I" },
+  { id: "sen", name: "Senegal", flag: "🇸🇳", group: "I" },
+  { id: "nor", name: "Noruega", flag: "🇳🇴", group: "I" },
+  { id: "irq", name: "Irak", flag: "🇮🇶", group: "I" },
 
   // Grupo J
-  { id: "ita", name: "Italia", flag: "🇮🇹", group: "J" },
-  { id: "den", name: "Dinamarca", flag: "🇩🇰", group: "J" },
-  { id: "par", name: "Paraguay", flag: "🇵🇾", group: "J" },
-  { id: "cpv", name: "Cabo Verde", flag: "🇨🇻", group: "J" },
+  { id: "arg", name: "Argentina", flag: "🇦🇷", group: "J" },
+  { id: "alg", name: "Argelia", flag: "🇩🇿", group: "J" },
+  { id: "aut", name: "Austria", flag: "🇦🇹", group: "J" },
+  { id: "jor", name: "Jordania", flag: "🇯🇴", group: "J" },
 
   // Grupo K
-  { id: "ned2", name: "Noruega", flag: "🇳🇴", group: "K" },
-  { id: "mexk", name: "Escocia", flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", group: "K" },
-  { id: "per", name: "Perú", flag: "🇵🇪", group: "K" },
-  { id: "alg", name: "Argelia", flag: "🇩🇿", group: "K" },
+  { id: "por", name: "Portugal", flag: "🇵🇹", group: "K" },
+  { id: "uzb", name: "Uzbekistán", flag: "🇺🇿", group: "K" },
+  { id: "col", name: "Colombia", flag: "🇨🇴", group: "K" },
+  { id: "cod", name: "RD del Congo", flag: "🇨🇩", group: "K" },
 
   // Grupo L
-  { id: "tur", name: "Turquía", flag: "🇹🇷", group: "L" },
-  { id: "crc", name: "Costa Rica", flag: "🇨🇷", group: "L" },
-  { id: "srb", name: "Serbia", flag: "🇷🇸", group: "L" },
-  { id: "pol", name: "Polonia", flag: "🇵🇱", group: "L" },
+  { id: "eng", name: "Inglaterra", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", group: "L" },
+  { id: "cro", name: "Croacia", flag: "🇭🇷", group: "L" },
+  { id: "gha", name: "Ghana", flag: "🇬🇭", group: "L" },
+  { id: "pan", name: "Panamá", flag: "🇵🇦", group: "L" },
 ];
 
 export function teamsByGroup(group: string): Team[] {
