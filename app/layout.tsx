@@ -1,33 +1,33 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import Link from "next/link";
+import { TopBar } from "./components/TopBar";
+import { getCurrentUser } from "@/lib/session";
 
 export const metadata: Metadata = {
   title: "Porra del Mundial 2026",
-  description: "Haz tu porra del Mundial 2026: ordena los grupos y la eliminatoria.",
+  description:
+    "Haz tu porra del Mundial 2026: ordena los grupos y la eliminatoria.",
 };
+
+// Aplica el tema guardado antes de pintar para evitar parpadeo (FOUC).
+const themeScript = `(function(){try{var t=localStorage.getItem('porra2026:theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);}else{document.documentElement.setAttribute('data-theme','light');}}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const user = getCurrentUser();
   return (
-    <html lang="es">
+    <html lang="es" data-theme="light">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>
-        <header className="nav">
-          <div className="container">
-            <Link href="/" className="brand">
-              ⚽ Porra Mundial 2026
-            </Link>
-            <nav>
-              <Link href="/porra">Mi porra</Link>
-              <Link href="/ranking">Clasificación</Link>
-              <Link href="/admin">Admin</Link>
-            </nav>
-          </div>
-        </header>
-        <main className="container">{children}</main>
+        <div className="app">
+          <TopBar userName={user?.name} />
+          <main className="main">{children}</main>
+        </div>
       </body>
     </html>
   );

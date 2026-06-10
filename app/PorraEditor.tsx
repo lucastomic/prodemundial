@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { GROUPS, getTeam } from "@/data/teams";
 import {
   Bracket,
@@ -11,6 +11,9 @@ import {
   pruneBracket,
 } from "@/lib/bracket";
 import type { Prediction } from "@/lib/db";
+import { Icons } from "./components/icons";
+import { Flag } from "./components/Flag";
+import { Banner } from "./components/Banner";
 
 type SaveResult = { ok: boolean; error?: string };
 
@@ -20,20 +23,26 @@ export default function PorraEditor({
   onSave,
   mode = "user",
   resumeUrl,
+  userName,
 }: {
   initial: Prediction;
   readOnly: boolean;
   onSave: (pred: Prediction) => Promise<SaveResult>;
   mode?: "user" | "admin";
   resumeUrl?: string;
+  userName?: string | null;
 }) {
   const [groups, setGroups] = useState<Groups>(initial.groups);
   const [thirds, setThirds] = useState<string[]>(initial.thirds);
   const [bracket, setBracket] = useState<Bracket>(initial.bracket);
+  const [saved, setSaved] = useState(true);
   const [pending, startTransition] = useTransition();
-  const [status, setStatus] = useState<{ ok?: boolean; msg: string } | null>(
-    null
-  );
+  const [toast, setToast] = useState<string | null>(null);
+  const [activeStep, setActiveStep] = useState("grupos");
+
+  function dirty() {
+    setSaved(false);
+  }
 
   function moveTeam(letter: string, idx: number, dir: -1 | 1) {
     if (readOnly) return;
@@ -41,227 +50,581 @@ export default function PorraEditor({
     const j = idx + dir;
     if (j < 0 || j >= arr.length) return;
     [arr[idx], arr[j]] = [arr[j], arr[idx]];
-    const next = { ...groups, [letter]: arr };
-    setGroups(next);
-    setBracket(pruneBracket(next, thirds, bracket));
+    const ng = { ...groups, [letter]: arr };
+    setGroups(ng);
+    setBracket(pruneBracket(ng, thirds, bracket));
+    dirty();
   }
 
   function toggleThird(id: string) {
     if (readOnly) return;
-    let next: string[];
-    if (thirds.includes(id)) {
-      next = thirds.filter((t) => t !== id);
-    } else {
+    let nt: string[];
+    if (thirds.includes(id)) nt = thirds.filter((t) => t !== id);
+    else {
       if (thirds.length >= 8) return;
-      next = [...thirds, id];
+      nt = [...thirds, id];
     }
-    setThirds(next);
-    setBracket(pruneBracket(groups, next, bracket));
+    setThirds(nt);
+    setBracket(pruneBracket(groups, nt, bracket));
+    dirty();
   }
 
-  function pickWinner(round: RoundKey, matchIndex: number, teamId: string) {
+  function pickWinner(round: RoundKey, mi: number, teamId: string) {
     if (readOnly || !teamId) return;
-    const next: Bracket = {
+    const nb: Bracket = {
       r32: [...bracket.r32],
       r16: [...bracket.r16],
       qf: [...bracket.qf],
       sf: [...bracket.sf],
       final: [...bracket.final],
     };
-    next[round][matchIndex] = next[round][matchIndex] === teamId ? "" : teamId;
-    setBracket(pruneBracket(groups, thirds, next));
+    nb[round][mi] = nb[round][mi] === teamId ? "" : teamId;
+    setBracket(pruneBracket(groups, thirds, nb));
+    dirty();
   }
 
-  const thirdCandidates = useMemo(
-    () => GROUPS.map((g) => groups[g]?.[2]).filter(Boolean) as string[],
-    [groups]
-  );
-
-  const champion = bracket.final[0];
-
   function save() {
-    setStatus(null);
     startTransition(async () => {
       const res = await onSave({ groups, thirds, bracket });
-      setStatus(
-        res.ok
-          ? { ok: true, msg: "Guardado correctamente ✓" }
-          : { ok: false, msg: res.error || "Error al guardar." }
-      );
+      if (res.ok) {
+        setSaved(true);
+        setToast(
+          mode === "admin"
+            ? "Resultados guardados correctamente ✓"
+            : "Porra guardada correctamente ✓"
+        );
+      } else {
+        setToast(res.error || "Error al guardar.");
+      }
     });
   }
 
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2800);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  // resalta el paso activo según la sección visible
+  useEffect(() => {
+    const ids: Record<string, string> = {
+      "sec-grupos": "grupos",
+      "sec-terceros": "terceros",
+      "sec-cuadro": "cuadro",
+    };
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) setActiveStep(ids[e.target.id]);
+        });
+      },
+      { rootMargin: "-45% 0px -50% 0px" }
+    );
+    Object.keys(ids).forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) obs.observe(el);
+    });
+    return () => obs.disconnect();
+  }, []);
+
+  function goStep(id: string) {
+    const map: Record<string, string> = {
+      grupos: "sec-grupos",
+      terceros: "sec-terceros",
+      cuadro: "sec-cuadro",
+    };
+    const el = document.getElementById(map[id]);
+    if (el) window.scrollTo({ top: el.offsetTop - 76, behavior: "smooth" });
+  }
+
+  const thirdsDone = thirds.length === 8;
+  const champ = bracket.final[0];
+  const steps = [
+    { id: "grupos", n: 1, label: "Grupos", done: true },
+    { id: "terceros", n: 2, label: "Terceros", done: thirdsDone },
+    { id: "cuadro", n: 3, label: "Cuadro", done: !!champ },
+  ];
+
   return (
-    <div>
-      {/* ---------- Grupos ---------- */}
-      <h2>1. Ordena los grupos</h2>
-      <p className="muted small">
-        Coloca los equipos de 1º a 4º con las flechas. Los 2 primeros (resaltados)
-        pasan directos; el 3º es candidato a mejor tercero.
-      </p>
-      <div className="group-grid">
-        {GROUPS.map((letter) => (
-          <div className="card" key={letter} style={{ margin: 0 }}>
-            <h3>Grupo {letter}</h3>
-            {groups[letter].map((teamId, idx) => {
-              const t = getTeam(teamId);
-              return (
-                <div
-                  className={`team-row${idx < 2 ? " qualifies" : ""}`}
-                  key={teamId}
-                >
-                  <span className="pos">{idx + 1}º</span>
-                  <span className="flag">{t?.flag}</span>
-                  <span className="name">{t?.name}</span>
-                  {!readOnly && (
-                    <>
-                      <button
-                        className="arrow-btn"
-                        onClick={() => moveTeam(letter, idx, -1)}
-                        disabled={idx === 0}
-                        aria-label="Subir"
-                      >
-                        ▲
-                      </button>
-                      <button
-                        className="arrow-btn"
-                        onClick={() => moveTeam(letter, idx, 1)}
-                        disabled={idx === groups[letter].length - 1}
-                        aria-label="Bajar"
-                      >
-                        ▼
-                      </button>
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
+    <div className="wrap">
+      <div className="editor-head">
+        <span className="eyebrow">
+          {mode === "admin" ? "Panel de administración" : "Mi porra"}
+        </span>
+        <h1 className="title" style={{ marginTop: 12 }}>
+          {mode === "admin"
+            ? "Resultados reales"
+            : `La porra de ${userName || "tu equipo"}`}
+        </h1>
+        <p className="lead" style={{ marginTop: 8 }}>
+          {mode === "admin"
+            ? "Introduce el orden real de los grupos, los terceros clasificados y los ganadores reales. La clasificación se recalcula automáticamente."
+            : "Tres pasos hasta tu campeón. Guarda cuando quieras: puedes editar las veces que necesites hasta el cierre."}
+        </p>
 
-      {/* ---------- Mejores terceros ---------- */}
-      <h2>2. Mejores terceros ({thirds.length}/8)</h2>
-      <p className="muted small">
-        En el formato 2026 avanzan los 8 mejores terceros. Elige cuáles de los 12
-        terceros de grupo pasan a dieciseisavos.
-      </p>
-      <div className="thirds-grid">
-        {thirdCandidates.map((teamId) => {
-          const t = getTeam(teamId);
-          const selected = thirds.includes(teamId);
-          return (
-            <div
-              key={teamId}
-              className={`third-chip${selected ? " selected" : ""}`}
-              onClick={() => toggleThird(teamId)}
+        {readOnly && (
+          <div style={{ marginTop: 18 }}>
+            <Banner kind="warn">
+              Las porras están <b>cerradas</b>. Esta es una vista de solo lectura.
+            </Banner>
+          </div>
+        )}
+
+        <div className="steps-nav">
+          {steps.map((s) => (
+            <button
+              key={s.id}
+              className={`step-tab ${activeStep === s.id ? "active" : ""} ${
+                s.done ? "done" : ""
+              }`}
+              onClick={() => goStep(s.id)}
             >
-              <span>{selected ? "✅" : "⬜"}</span>
-              <span className="flag">{t?.flag}</span>
-              <span>
-                {t?.name} <span className="muted small">({t?.group})</span>
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ---------- Cuadro ---------- */}
-      <h2>3. Cuadro eliminatorio</h2>
-      <p className="muted small">
-        Haz clic en el equipo que avanza en cada cruce. Las rondas se rellenan a
-        partir de tus elecciones.
-      </p>
-      {thirds.length < 8 && (
-        <div className="banner warn small">
-          Selecciona los 8 mejores terceros para completar los dieciseisavos.
-        </div>
-      )}
-      <div className="bracket">
-        {ROUNDS.map((round) => (
-          <div className="round-col" key={round.key}>
-            <h3>{round.label}</h3>
-            {Array.from({ length: round.matches }).map((_, i) => {
-              const [a, b] = matchParticipants(
-                round.key,
-                i,
-                groups,
-                thirds,
-                bracket
-              );
-              const pick = bracket[round.key][i];
-              return (
-                <div className="match" key={i}>
-                  <Slot teamId={a} picked={pick === a && !!a} onPick={() => pickWinner(round.key, i, a)} />
-                  <Slot teamId={b} picked={pick === b && !!b} onPick={() => pickWinner(round.key, i, b)} />
-                </div>
-              );
-            })}
-          </div>
-        ))}
-        <div className="round-col">
-          <h3>Campeón 🏆</h3>
-          <div className="match">
-            <div className="champion-box">
-              {champion ? (
-                <>
-                  <span className="flag">{getTeam(champion)?.flag}</span>{" "}
-                  {getTeam(champion)?.name}
-                </>
-              ) : (
-                <span className="muted">—</span>
-              )}
-            </div>
-          </div>
+              <span className="n">{s.done ? <Icons.check size={12} /> : s.n}</span>
+              {s.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ---------- Barra de guardado ---------- */}
+      <GroupsSection groups={groups} onMove={moveTeam} readOnly={readOnly} />
+      <ThirdsSection
+        groups={groups}
+        thirds={thirds}
+        onToggle={toggleThird}
+        readOnly={readOnly}
+      />
+      <BracketSection
+        groups={groups}
+        thirds={thirds}
+        bracket={bracket}
+        onPick={pickWinner}
+        readOnly={readOnly}
+      />
+
       {!readOnly && (
         <div className="save-bar">
-          <button className="btn-primary" onClick={save} disabled={pending}>
-            {pending
-              ? "Guardando…"
-              : mode === "admin"
-              ? "Guardar resultados reales"
-              : "Guardar mi porra"}
-          </button>
-          {status && (
-            <span className={status.ok ? "banner ok" : "banner error"} style={{ margin: 0 }}>
-              {status.msg}
-            </span>
-          )}
-          {mode === "user" && resumeUrl && (
-            <div className="small muted">
-              Tu enlace para retomar la porra:{" "}
-              <a className="token-link" href={resumeUrl}>
-                {resumeUrl}
-              </a>
+          <div className="save-bar-inner">
+            <div className={`save-meta ${saved ? "saved" : ""}`}>
+              <span className="dot"></span>
+              {saved ? "Todo guardado" : "Cambios sin guardar"}
             </div>
-          )}
+            {mode === "user" && resumeUrl && (
+              <div className="token-link hide-sm">
+                Enlace para retomar: <a href={resumeUrl}>{resumeUrl}</a>
+              </div>
+            )}
+            <div className="save-spacer"></div>
+            <button className="btn btn-primary" onClick={save} disabled={pending}>
+              {pending ? (
+                "Guardando…"
+              ) : (
+                <>
+                  <Icons.save size={16} />{" "}
+                  {mode === "admin" ? "Guardar resultados" : "Guardar porra"}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="toast">
+          <Icons.circleCheck size={18} />
+          {toast}
         </div>
       )}
     </div>
   );
 }
 
+/* ----------------------------- GROUPS ----------------------------- */
+function GroupsSection({
+  groups,
+  onMove,
+  readOnly,
+}: {
+  groups: Groups;
+  onMove: (letter: string, idx: number, dir: -1 | 1) => void;
+  readOnly: boolean;
+}) {
+  return (
+    <div className="editor-section" id="sec-grupos">
+      <div className="section-head">
+        <span className="section-num">1</span>
+        <div>
+          <h2 className="section-title">Ordena los grupos</h2>
+          <p className="section-sub">
+            Coloca los equipos de 1º a 4º. Los 2 primeros pasan directos; el 3º es
+            candidato a mejor tercero.
+          </p>
+        </div>
+      </div>
+      <div className="group-grid">
+        {GROUPS.map((letter) => (
+          <div className="card group-card" key={letter}>
+            <div className="group-card-head">
+              <span className="group-letter">{letter}</span>
+              <span className="gname">Grupo {letter}</span>
+            </div>
+            <div className="group-body">
+              {groups[letter].map((teamId, idx) => {
+                const t = getTeam(teamId);
+                const cls = idx < 2 ? "qualifies" : idx === 2 ? "third" : "";
+                return (
+                  <div className={`team-row ${cls}`} key={teamId}>
+                    <span className="pos">{idx + 1}</span>
+                    <Flag id={teamId} size="sm" />
+                    <span className="tname">{t?.name}</span>
+                    {idx < 2 && <span className="tag q">Pasa</span>}
+                    {idx === 2 && <span className="tag t">3º</span>}
+                    {!readOnly && (
+                      <div className="arrows">
+                        <button
+                          className="arrow-btn"
+                          disabled={idx === 0}
+                          onClick={() => onMove(letter, idx, -1)}
+                          aria-label="Subir"
+                        >
+                          <Icons.chevUp size={12} />
+                        </button>
+                        <button
+                          className="arrow-btn"
+                          disabled={idx === groups[letter].length - 1}
+                          onClick={() => onMove(letter, idx, 1)}
+                          aria-label="Bajar"
+                        >
+                          <Icons.chevDown size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------- THIRDS ----------------------------- */
+function ThirdsSection({
+  groups,
+  thirds,
+  onToggle,
+  readOnly,
+}: {
+  groups: Groups;
+  thirds: string[];
+  onToggle: (id: string) => void;
+  readOnly: boolean;
+}) {
+  const candidates = GROUPS.map((g) => groups[g]?.[2]).filter(Boolean) as string[];
+  const pct = (thirds.length / 8) * 100;
+  return (
+    <div className="editor-section" id="sec-terceros">
+      <div
+        className="section-head"
+        style={{ justifyContent: "space-between", width: "100%" }}
+      >
+        <div style={{ display: "flex", gap: 16 }}>
+          <span className="section-num">2</span>
+          <div>
+            <h2 className="section-title">Mejores terceros</h2>
+            <p className="section-sub">
+              Avanzan los 8 mejores terceros de grupo. Elige cuáles pasan a
+              dieciseisavos.
+            </p>
+          </div>
+        </div>
+        <div className="thirds-counter">
+          <div className="counter-bar">
+            <div className="counter-fill" style={{ width: `${pct}%` }}></div>
+          </div>
+          <span className="counter-num">
+            <em>{thirds.length}</em>/8
+          </span>
+        </div>
+      </div>
+      <div className="thirds-grid">
+        {candidates.map((teamId) => {
+          const t = getTeam(teamId);
+          const selected = thirds.includes(teamId);
+          const disabled = readOnly || (!selected && thirds.length >= 8);
+          return (
+            <button
+              key={teamId}
+              className={`third-chip ${selected ? "selected" : ""}`}
+              disabled={disabled}
+              onClick={() => onToggle(teamId)}
+            >
+              <span className="check">{selected && <Icons.check size={13} />}</span>
+              <Flag id={teamId} size="sm" />
+              <span className="tn">{t?.name}</span>
+              <span className="tg">{t?.group}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------- BRACKET ----------------------------- */
 function Slot({
   teamId,
   picked,
   onPick,
+  disabled,
 }: {
   teamId: string;
   picked: boolean;
   onPick: () => void;
+  disabled: boolean;
 }) {
   const t = getTeam(teamId);
-  if (!t) {
-    return <div className="slot empty">Por definir</div>;
-  }
+  if (!t)
+    return (
+      <div className="slot empty">
+        <span className="sname">Por definir</span>
+      </div>
+    );
   return (
-    <div className={`slot${picked ? " picked" : ""}`} onClick={onPick}>
-      <span className="flag">{t.flag}</span>
-      <span>{t.name}</span>
+    <button
+      className={`slot ${picked ? "picked" : ""}`}
+      disabled={disabled}
+      onClick={onPick}
+      style={disabled ? { cursor: "default" } : undefined}
+    >
+      <Flag id={teamId} size="sm" />
+      <span className="sname">{t.name}</span>
+      <span className="winmark">
+        <Icons.check size={14} />
+      </span>
+    </button>
+  );
+}
+
+function BracketSection({
+  groups,
+  thirds,
+  bracket,
+  onPick,
+  readOnly,
+}: {
+  groups: Groups;
+  thirds: string[];
+  bracket: Bracket;
+  onPick: (round: RoundKey, mi: number, teamId: string) => void;
+  readOnly: boolean;
+}) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [paths, setPaths] = useState<string[]>([]);
+  const [dim, setDim] = useState({ w: 0, h: 0 });
+  const lastKey = useRef("");
+
+  function recompute() {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const base = wrap.getBoundingClientRect();
+    const ox = wrap.scrollLeft - base.left;
+    const oy = wrap.scrollTop - base.top;
+    const center = (el: Element, side: "left" | "right") => {
+      const r = el.getBoundingClientRect();
+      return {
+        x: (side === "right" ? r.right : r.left) + ox,
+        y: r.top + oy + r.height / 2,
+      };
+    };
+    const getMatches = (key: string) =>
+      Array.from(wrap.querySelectorAll(`.match[data-round="${key}"]`));
+    const next: string[] = [];
+    for (let ri = 0; ri < ROUNDS.length - 1; ri++) {
+      const cur = ROUNDS[ri].key;
+      const nxt = ROUNDS[ri + 1].key;
+      const curEls = getMatches(cur);
+      const nxtEls = getMatches(nxt);
+      curEls.forEach((el, i) => {
+        const parent = nxtEls[Math.floor(i / 2)];
+        if (!el || !parent) return;
+        const a = center(el, "right");
+        const b = center(parent, "left");
+        const midX = (a.x + b.x) / 2;
+        next.push(`M ${a.x} ${a.y} H ${midX} V ${b.y} H ${b.x}`);
+      });
+    }
+    const finalEl = getMatches("final")[0];
+    const champEl = wrap.querySelector(".champ-card");
+    if (finalEl && champEl) {
+      const a = center(finalEl, "right");
+      const b = center(champEl, "left");
+      const midX = (a.x + b.x) / 2;
+      next.push(`M ${a.x} ${a.y} H ${midX} V ${b.y} H ${b.x}`);
+    }
+    const w = wrap.scrollWidth;
+    const h = wrap.scrollHeight;
+    const key = w + "x" + h + "|" + next.join("~");
+    if (key === lastKey.current) return;
+    lastKey.current = key;
+    setPaths(next);
+    setDim({ w, h });
+  }
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    recompute();
+    [60, 200, 500].forEach((ms) => timers.push(setTimeout(recompute, ms)));
+    if (document.fonts && document.fonts.ready)
+      document.fonts.ready.then(recompute);
+    const ro = new ResizeObserver(() => recompute());
+    if (wrapRef.current) ro.observe(wrapRef.current);
+    window.addEventListener("resize", recompute);
+    const wrap = wrapRef.current;
+    wrap && wrap.addEventListener("scroll", recompute, { passive: true });
+    return () => {
+      timers.forEach(clearTimeout);
+      ro.disconnect();
+      window.removeEventListener("resize", recompute);
+      wrap && wrap.removeEventListener("scroll", recompute);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // redibuja cuando cambian las elecciones o la estructura
+  useEffect(() => {
+    recompute();
+  });
+
+  const champion = bracket.final[0];
+  const champTeam = getTeam(champion);
+  const incomplete = thirds.length < 8;
+
+  return (
+    <div className="editor-section" id="sec-cuadro">
+      <div className="section-head">
+        <span className="section-num">3</span>
+        <div>
+          <h2 className="section-title">Cuadro eliminatorio</h2>
+          <p className="section-sub">
+            Haz clic en el equipo que avanza en cada cruce. Las rondas se rellenan
+            a partir de tus elecciones.
+          </p>
+        </div>
+      </div>
+
+      {incomplete && (
+        <div style={{ marginBottom: 14 }}>
+          <Banner kind="warn">
+            Selecciona los <b>8 mejores terceros</b> para completar los
+            dieciseisavos.
+          </Banner>
+        </div>
+      )}
+
+      <div className="card" style={{ padding: 0 }}>
+        <div className="bracket-wrap" ref={wrapRef}>
+          <svg
+            className="bracket-conn"
+            width={dim.w}
+            height={dim.h}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              pointerEvents: "none",
+              zIndex: 0,
+              overflow: "visible",
+            }}
+          >
+            {paths.map((d, i) => (
+              <path
+                key={i}
+                d={d}
+                className="bk-conn"
+                fill="none"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
+          </svg>
+
+          <div className="bracket" style={{ position: "relative" }}>
+            {ROUNDS.map((round, ri) => (
+              <div
+                className={`round-col ${ri > 0 ? "has-prev" : ""}`}
+                key={round.key}
+              >
+                <div className="round-head">
+                  <div className="rh-label">{round.label}</div>
+                  <div className="rh-sub">{round.sub}</div>
+                </div>
+                <div className="round-body">
+                  {Array.from({ length: round.matches }).map((_, i) => {
+                    const [a, b] = matchParticipants(
+                      round.key,
+                      i,
+                      groups,
+                      thirds,
+                      bracket
+                    );
+                    const pick = bracket[round.key][i];
+                    return (
+                      <div
+                        className="match"
+                        key={i}
+                        data-round={round.key}
+                        data-mi={i}
+                        style={{ position: "relative", zIndex: 1 }}
+                      >
+                        <Slot
+                          teamId={a}
+                          picked={pick === a && !!a}
+                          disabled={readOnly || !a}
+                          onPick={() => onPick(round.key, i, a)}
+                        />
+                        <Slot
+                          teamId={b}
+                          picked={pick === b && !!b}
+                          disabled={readOnly || !b}
+                          onPick={() => onPick(round.key, i, b)}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* Champion */}
+            <div className="champ-col">
+              <div
+                className="champ-card"
+                style={{ position: "relative", zIndex: 1 }}
+              >
+                <div className="champ-ey">Campeón del Mundo</div>
+                <div className="champ-trophy">
+                  <Icons.trophy size={46} />
+                </div>
+                {champTeam ? (
+                  <>
+                    <Flag id={champion} size="lg" />
+                    <div className="champ-name" style={{ marginTop: 8 }}>
+                      {champTeam.name}
+                    </div>
+                  </>
+                ) : (
+                  <div className="champ-empty">
+                    Completa el cuadro para coronar a tu campeón
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

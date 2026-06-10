@@ -24,12 +24,12 @@ export type Bracket = {
 
 export type RoundKey = "r32" | "r16" | "qf" | "sf" | "final";
 
-export const ROUNDS: { key: RoundKey; matches: number; label: string }[] = [
-  { key: "r32", matches: 16, label: "Dieciseisavos" },
-  { key: "r16", matches: 8, label: "Octavos" },
-  { key: "qf", matches: 4, label: "Cuartos" },
-  { key: "sf", matches: 2, label: "Semifinales" },
-  { key: "final", matches: 1, label: "Final" },
+export const ROUNDS: { key: RoundKey; matches: number; label: string; sub: string }[] = [
+  { key: "r32", matches: 16, label: "Dieciseisavos", sub: "32 equipos" },
+  { key: "r16", matches: 8, label: "Octavos", sub: "16 equipos" },
+  { key: "qf", matches: 4, label: "Cuartos", sub: "8 equipos" },
+  { key: "sf", matches: 2, label: "Semifinales", sub: "4 equipos" },
+  { key: "final", matches: 1, label: "Final", sub: "2 equipos" },
 ];
 
 // Plantilla fija de dieciseisavos. Códigos: "1X"=1º grupo X, "2X"=2º grupo X,

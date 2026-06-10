@@ -2,6 +2,7 @@ import PorraEditor from "../PorraEditor";
 import { adminLoginAction, adminLogoutAction, saveResultsAction } from "../actions";
 import { getResults } from "@/lib/db";
 import { isAdmin } from "@/lib/session";
+import { Banner } from "../components/Banner";
 
 export const dynamic = "force-dynamic";
 
@@ -15,26 +16,50 @@ export default function AdminPage({
 
   if (!admin) {
     return (
-      <div>
-        <h1>Administración</h1>
-        {!passwordConfigured && (
-          <div className="banner error">
-            No hay <code>ADMIN_PASSWORD</code> configurada. Define la variable de
-            entorno para poder entrar.
-          </div>
-        )}
-        {searchParams.error && (
-          <div className="banner error">Contraseña incorrecta.</div>
-        )}
-        <div className="card">
-          <form action={adminLoginAction}>
-            <label htmlFor="password">Contraseña de administrador</label>
-            <input id="password" name="password" type="password" required />
-            <div style={{ marginTop: 14 }}>
-              <button className="btn-primary" type="submit">
-                Entrar
-              </button>
+      <div className="wrap wrap-narrow">
+        <span className="eyebrow">Administración</span>
+        <h1 className="title" style={{ marginTop: 12, marginBottom: 24 }}>
+          Acceso restringido
+        </h1>
+        <div className="card signup-card">
+          <h2>Entrar como administrador</h2>
+          <p className="sub">
+            Introduce la contraseña para cargar los resultados reales del torneo.
+          </p>
+          {!passwordConfigured && (
+            <div style={{ marginBottom: 14 }}>
+              <Banner kind="err">
+                No hay <code>ADMIN_PASSWORD</code> configurada. Define la variable
+                de entorno para poder entrar.
+              </Banner>
             </div>
+          )}
+          {searchParams.error && (
+            <div style={{ marginBottom: 14 }}>
+              <Banner kind="err">Contraseña incorrecta.</Banner>
+            </div>
+          )}
+          <form action={adminLoginAction}>
+            <div className="field">
+              <label className="label" htmlFor="password">
+                Contraseña de administrador
+              </label>
+              <input
+                id="password"
+                name="password"
+                className="input"
+                type="password"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+            <button
+              className="btn btn-primary btn-lg"
+              type="submit"
+              style={{ width: "100%" }}
+            >
+              Entrar
+            </button>
           </form>
         </div>
       </div>
@@ -44,22 +69,26 @@ export default function AdminPage({
   const results = getResults();
 
   return (
-    <div>
-      <h1>Resultados reales</h1>
-      <p className="muted small">
-        Introduce el orden real de los grupos, los terceros que realmente
-        clasificaron y los ganadores reales de la eliminatoria. La clasificación
-        se recalcula automáticamente.
-      </p>
-      <form action={adminLogoutAction} style={{ marginBottom: 8 }}>
-        <button type="submit">Cerrar sesión de admin</button>
-      </form>
+    <>
       <PorraEditor
         initial={results}
         readOnly={false}
         onSave={saveResultsAction}
         mode="admin"
       />
-    </div>
+      <form
+        action={adminLogoutAction}
+        style={{
+          position: "fixed",
+          top: 70,
+          right: 16,
+          zIndex: 60,
+        }}
+      >
+        <button type="submit" className="btn btn-ghost">
+          Cerrar sesión
+        </button>
+      </form>
+    </>
   );
 }
