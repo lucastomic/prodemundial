@@ -32,13 +32,20 @@ export const ROUNDS: { key: RoundKey; matches: number; label: string; sub: strin
   { key: "final", matches: 1, label: "Final", sub: "2 equipos" },
 ];
 
-// Plantilla fija de dieciseisavos. Códigos: "1X"=1º grupo X, "2X"=2º grupo X,
-// "Tn"=tercero nº n (0..7) tras ordenar los terceros elegidos por letra de grupo.
+// Plantilla fija de dieciseisavos, EQUILIBRADA y conforme a los principios
+// oficiales del Mundial 2026: los primeros de grupo nunca se enfrentan entre sí
+// en dieciseisavos, y los terceros sólo se enfrentan a primeros de grupo. Por
+// tanto: 8 cruces 1º–3º, 4 cruces 1º–2º y 4 cruces 2º–2º, intercalados por todo
+// el cuadro para que ambas mitades queden equilibradas.
+// Códigos: "1X"=1º grupo X, "2X"=2º grupo X, "Tn"=tercero nº n (0..7) tras
+// ordenar los terceros elegidos por letra de grupo.
+// (Los terceros se reparten con un desfase respecto al 1º de su mismo grupo para
+//  evitar, en lo posible, que un 1º se cruce con el tercero de su propio grupo.)
 const R32_TEMPLATE: [string, string][] = [
-  ["1A", "2B"], ["1C", "2D"], ["1E", "2F"], ["1G", "2H"],
-  ["1I", "2J"], ["1K", "2L"], ["1B", "2A"], ["1D", "2C"],
-  ["1F", "2E"], ["1H", "2G"], ["1J", "2I"], ["1L", "2K"],
-  ["T0", "T1"], ["T2", "T3"], ["T4", "T5"], ["T6", "T7"],
+  ["1A", "T4"], ["2E", "2F"], ["1I", "2A"], ["1B", "T5"],
+  ["1C", "T6"], ["2G", "2H"], ["1J", "2B"], ["1D", "T7"],
+  ["1E", "T0"], ["2I", "2J"], ["1K", "2C"], ["1F", "T1"],
+  ["1G", "T2"], ["2K", "2L"], ["1L", "2D"], ["1H", "T3"],
 ];
 
 export function emptyGroups(): Groups {
