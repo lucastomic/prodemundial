@@ -11,6 +11,22 @@ import {
   pruneBracket,
 } from "@/lib/bracket";
 import type { Prediction } from "@/lib/db";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Icons } from "./components/icons";
 import { Flag } from "./components/Flag";
 import { Banner } from "./components/Banner";
@@ -44,13 +60,9 @@ export default function PorraEditor({
     setSaved(false);
   }
 
-  function moveTeam(letter: string, idx: number, dir: -1 | 1) {
+  function reorderGroup(letter: string, newOrder: string[]) {
     if (readOnly) return;
-    const arr = [...groups[letter]];
-    const j = idx + dir;
-    if (j < 0 || j >= arr.length) return;
-    [arr[idx], arr[j]] = [arr[j], arr[idx]];
-    const ng = { ...groups, [letter]: arr };
+    const ng = { ...groups, [letter]: newOrder };
     setGroups(ng);
     setBracket(pruneBracket(ng, thirds, bracket));
     dirty();
@@ -186,7 +198,11 @@ export default function PorraEditor({
         </div>
       </div>
 
-      <GroupsSection groups={groups} onMove={moveTeam} readOnly={readOnly} />
+      <GroupsSection
+        groups={groups}
+        onReorder={reorderGroup}
+        readOnly={readOnly}
+      />
       <ThirdsSection
         groups={groups}
         thirds={thirds}
@@ -241,11 +257,11 @@ export default function PorraEditor({
 /* ----------------------------- GROUPS ----------------------------- */
 function GroupsSection({
   groups,
-  onMove,
+  onReorder,
   readOnly,
 }: {
   groups: Groups;
-  onMove: (letter: string, idx: number, dir: -1 | 1) => void;
+  onReorder: (letter: string, newOrder: string[]) => void;
   readOnly: boolean;
 }) {
   return (
@@ -255,56 +271,147 @@ function GroupsSection({
         <div>
           <h2 className="section-title">Ordena los grupos</h2>
           <p className="section-sub">
-            Coloca los equipos de 1º a 4º. Los 2 primeros pasan directos; el 3º es
-            candidato a mejor tercero.
+            Arrastra los equipos para colocarlos de 1º a 4º. Los 2 primeros pasan
+            directos; el 3º es candidato a mejor tercero.
           </p>
         </div>
       </div>
       <div className="group-grid">
         {GROUPS.map((letter) => (
-          <div className="card group-card" key={letter}>
-            <div className="group-card-head">
-              <span className="group-letter">{letter}</span>
-              <span className="gname">Grupo {letter}</span>
-            </div>
-            <div className="group-body">
-              {groups[letter].map((teamId, idx) => {
-                const t = getTeam(teamId);
-                const cls = idx < 2 ? "qualifies" : idx === 2 ? "third" : "";
-                return (
-                  <div className={`team-row ${cls}`} key={teamId}>
-                    <span className="pos">{idx + 1}</span>
-                    <Flag id={teamId} size="sm" />
-                    <span className="tname">{t?.name}</span>
-                    {idx < 2 && <span className="tag q">Pasa</span>}
-                    {idx === 2 && <span className="tag t">3º</span>}
-                    {!readOnly && (
-                      <div className="arrows">
-                        <button
-                          className="arrow-btn"
-                          disabled={idx === 0}
-                          onClick={() => onMove(letter, idx, -1)}
-                          aria-label="Subir"
-                        >
-                          <Icons.chevUp size={12} />
-                        </button>
-                        <button
-                          className="arrow-btn"
-                          disabled={idx === groups[letter].length - 1}
-                          onClick={() => onMove(letter, idx, 1)}
-                          aria-label="Bajar"
-                        >
-                          <Icons.chevDown size={12} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <GroupCard
+            key={letter}
+            letter={letter}
+            teamIds={groups[letter]}
+            onReorder={onReorder}
+            readOnly={readOnly}
+          />
         ))}
       </div>
+    </div>
+  );
+}
+
+function GroupCard({
+  letter,
+  teamIds,
+  onReorder,
+  readOnly,
+}: {
+  letter: string;
+  teamIds: string[];
+  onReorder: (letter: string, newOrder: string[]) => void;
+  readOnly: boolean;
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 120, tolerance: 6 },
+    })
+  );
+
+  function handleDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const from = teamIds.indexOf(String(active.id));
+    const to = teamIds.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    onReorder(letter, arrayMove(teamIds, from, to));
+  }
+
+  return (
+    <div className="card group-card">
+      <div className="group-card-head">
+        <span className="group-letter">{letter}</span>
+        <span className="gname">Grupo {letter}</span>
+      </div>
+      <div className="group-body">
+        {readOnly ? (
+          teamIds.map((teamId, idx) => (
+            <TeamRowStatic key={teamId} teamId={teamId} idx={idx} />
+          ))
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={teamIds}
+              strategy={verticalListSortingStrategy}
+            >
+              {teamIds.map((teamId, idx) => (
+                <SortableTeamRow key={teamId} teamId={teamId} idx={idx} />
+              ))}
+            </SortableContext>
+          </DndContext>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function rowClass(idx: number) {
+  return idx < 2 ? "qualifies" : idx === 2 ? "third" : "";
+}
+
+function TeamRowInner({ teamId, idx }: { teamId: string; idx: number }) {
+  const t = getTeam(teamId);
+  return (
+    <>
+      <span className="pos">{idx + 1}</span>
+      <Flag id={teamId} size="sm" />
+      <span className="tname">{t?.name}</span>
+      {idx < 2 && <span className="tag q">Pasa</span>}
+      {idx === 2 && <span className="tag t">3º</span>}
+    </>
+  );
+}
+
+function TeamRowStatic({ teamId, idx }: { teamId: string; idx: number }) {
+  return (
+    <div className={`team-row ${rowClass(idx)}`}>
+      <TeamRowInner teamId={teamId} idx={idx} />
+    </div>
+  );
+}
+
+function SortableTeamRow({ teamId, idx }: { teamId: string; idx: number }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: teamId });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 5 : undefined,
+    position: "relative",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`team-row draggable ${rowClass(idx)} ${
+        isDragging ? "dragging" : ""
+      }`}
+      {...attributes}
+    >
+      <TeamRowInner teamId={teamId} idx={idx} />
+      <span
+        ref={setActivatorNodeRef}
+        className="grip"
+        aria-label="Arrastrar"
+        {...listeners}
+      >
+        <Icons.grip size={18} />
+      </span>
     </div>
   );
 }

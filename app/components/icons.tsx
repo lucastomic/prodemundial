@@ -75,4 +75,21 @@ export const Icons = {
     </Ico>
   ),
   star: (p: IconProps) => <Ico {...p}><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z" /></Ico>,
+  grip: ({ size = 20, ...rest }: IconProps) => (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="currentColor"
+      stroke="none"
+      {...rest}
+    >
+      <circle cx="9" cy="5" r="1.4" />
+      <circle cx="9" cy="12" r="1.4" />
+      <circle cx="9" cy="19" r="1.4" />
+      <circle cx="15" cy="5" r="1.4" />
+      <circle cx="15" cy="12" r="1.4" />
+      <circle cx="15" cy="19" r="1.4" />
+    </svg>
+  ),
 };

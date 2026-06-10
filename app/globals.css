@@ -600,3 +600,15 @@ h1.title { font-size: clamp(28px, 4vw, 40px); font-weight: 800; letter-spacing: 
   .stat + .stat { border-left: none; padding-left: 0; }
   .stat { flex: 0 0 40%; }
 }
+
+/* ---- Drag & drop de equipos en los grupos ---- */
+.team-row.draggable { cursor: default; }
+.team-row.dragging { box-shadow: var(--shadow-md); border-color: var(--accent); background: var(--surface); }
+.team-row .grip {
+  margin-left: 2px; flex-shrink: 0; display: grid; place-items: center;
+  width: 24px; height: 24px; border-radius: 6px; color: var(--subtle);
+  cursor: grab; touch-action: none; transition: color var(--dur-fast), background var(--dur-fast);
+}
+.team-row .grip:hover { color: var(--accent-deep); background: var(--surface-inset); }
+[data-theme="dark"] .team-row .grip:hover { color: var(--accent); }
+.team-row .grip:active { cursor: grabbing; }
