@@ -76,6 +76,14 @@ export function getPrediction(userId: string): Prediction {
   return rowToPrediction(row);
 }
 
+// ¿El usuario ya guardó su porra? (la porra es definitiva tras guardarla)
+export function hasPrediction(userId: string): boolean {
+  const row = db()
+    .prepare("SELECT 1 FROM predictions WHERE user_id = ?")
+    .get(userId);
+  return !!row;
+}
+
 export function savePrediction(userId: string, pred: Prediction): void {
   const updated_at = new Date().toISOString();
   db()

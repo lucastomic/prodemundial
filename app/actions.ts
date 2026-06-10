@@ -6,6 +6,7 @@ import {
   createUser,
   savePrediction as dbSavePrediction,
   saveResults as dbSaveResults,
+  hasPrediction,
   type Prediction,
 } from "@/lib/db";
 import { pruneBracket } from "@/lib/bracket";
@@ -35,6 +36,12 @@ export async function savePredictionAction(pred: Prediction): Promise<{ ok: bool
   const user = getCurrentUser();
   if (!user) return { ok: false, error: "No has iniciado sesión." };
   if (isLocked()) return { ok: false, error: "Las porras están cerradas." };
+  // La porra es definitiva: una vez guardada no se puede modificar.
+  if (hasPrediction(user.id))
+    return {
+      ok: false,
+      error: "Tu porra ya está guardada y no se puede modificar.",
+    };
 
   const cleaned: Prediction = {
     groups: pred.groups,
