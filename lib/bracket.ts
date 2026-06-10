@@ -5,10 +5,10 @@
 // Avanzan 32 equipos a dieciseisavos: los 2 primeros de cada grupo (24) + los
 // 8 mejores terceros elegidos por el usuario.
 //
-// NOTA: la siembra de los 8 terceros en el cuadro es una asignación DETERMINISTA
-// y SIMPLIFICADA (los terceros se ordenan por letra de grupo y se emparejan
-// entre sí). No reproduce la matriz oficial de terceros de la FIFA; se ha
-// optado por esta simplificación para mantener la app sencilla.
+// El cuadro reproduce los cruces OFICIALES de dieciseisavos del Mundial 2026,
+// incluidos los conjuntos de grupos de la matriz de terceros (Anexo C). Como
+// cada usuario elige libremente sus 8 terceros, éstos se asignan a los 8 huecos
+// de tercero mediante un emparejamiento determinista que respeta esos conjuntos.
 // ============================================================================
 
 import { GROUPS, TEAMS, getTeam } from "@/data/teams";
@@ -32,20 +32,32 @@ export const ROUNDS: { key: RoundKey; matches: number; label: string; sub: strin
   { key: "final", matches: 1, label: "Final", sub: "2 equipos" },
 ];
 
-// Plantilla fija de dieciseisavos, EQUILIBRADA y conforme a los principios
-// oficiales del Mundial 2026: los primeros de grupo nunca se enfrentan entre sí
-// en dieciseisavos, y los terceros sólo se enfrentan a primeros de grupo. Por
-// tanto: 8 cruces 1º–3º, 4 cruces 1º–2º y 4 cruces 2º–2º, intercalados por todo
-// el cuadro para que ambas mitades queden equilibradas.
-// Códigos: "1X"=1º grupo X, "2X"=2º grupo X, "Tn"=tercero nº n (0..7) tras
-// ordenar los terceros elegidos por letra de grupo.
-// (Los terceros se reparten con un desfase respecto al 1º de su mismo grupo para
-//  evitar, en lo posible, que un 1º se cruce con el tercero de su propio grupo.)
+// Cuadro OFICIAL de dieciseisavos del Mundial 2026 (en orden de cuadro, de
+// arriba a abajo). Códigos: "1X"=1º grupo X, "2X"=2º grupo X, "3"=tercero (se
+// asigna según la matriz oficial de terceros, ver THIRD_SLOTS).
 const R32_TEMPLATE: [string, string][] = [
-  ["1A", "T4"], ["2E", "2F"], ["1I", "2A"], ["1B", "T5"],
-  ["1C", "T6"], ["2G", "2H"], ["1J", "2B"], ["1D", "T7"],
-  ["1E", "T0"], ["2I", "2J"], ["1K", "2C"], ["1F", "T1"],
-  ["1G", "T2"], ["2K", "2L"], ["1L", "2D"], ["1H", "T3"],
+  ["1E", "3"], ["1I", "3"],   // M1, M2
+  ["2A", "2B"], ["1F", "2C"], // M3, M4
+  ["2K", "2L"], ["1H", "2J"], // M5, M6
+  ["1D", "3"], ["1G", "3"],   // M7, M8
+  ["1C", "2F"], ["2E", "2I"], // M9, M10
+  ["1A", "3"], ["1L", "3"],   // M11, M12
+  ["1J", "2H"], ["2D", "2G"], // M13, M14
+  ["1B", "3"], ["1K", "3"],   // M15, M16
+];
+
+// Matriz oficial de terceros: para cada dieciseisavo con un 3º, el conjunto de
+// grupos de los que puede provenir ese tercero (Anexo C del reglamento). El
+// índice es la posición del partido dentro de R32_TEMPLATE.
+const THIRD_SLOTS: { index: number; allowed: string }[] = [
+  { index: 0, allowed: "ABCDF" }, // 1E vs 3º
+  { index: 1, allowed: "CDFGH" }, // 1I vs 3º
+  { index: 6, allowed: "BEFIJ" }, // 1D vs 3º
+  { index: 7, allowed: "AEHIJ" }, // 1G vs 3º
+  { index: 10, allowed: "CEFHI" }, // 1A vs 3º
+  { index: 11, allowed: "EHIJK" }, // 1L vs 3º
+  { index: 14, allowed: "EFGIJ" }, // 1B vs 3º
+  { index: 15, allowed: "DEIJL" }, // 1K vs 3º
 ];
 
 export function emptyGroups(): Groups {
@@ -66,19 +78,49 @@ export function emptyBracket(): Bracket {
   };
 }
 
-// Terceros elegidos ordenados de forma determinista por letra de grupo.
-function sortThirds(thirds: string[]): string[] {
-  return [...thirds].sort((a, b) => {
-    const ga = getTeam(a)?.group ?? "";
-    const gb = getTeam(b)?.group ?? "";
-    return ga < gb ? -1 : ga > gb ? 1 : 0;
+// Asigna los terceros elegidos a los dieciseisavos respetando la matriz oficial
+// (cada tercero sólo puede ir a un partido cuyo conjunto "allowed" incluya su
+// grupo). Emparejamiento máximo determinista (algoritmo de Kuhn). Devuelve un
+// mapa: índice de partido -> teamId del tercero asignado.
+function assignThirds(thirds: string[]): Record<number, string> {
+  // grupo -> teamId del tercero elegido de ese grupo
+  const thirdByGroup = new Map<string, string>();
+  for (const id of thirds) {
+    const g = getTeam(id)?.group;
+    if (g) thirdByGroup.set(g, id);
+  }
+  const groupsSel = [...thirdByGroup.keys()].sort();
+
+  const slotGroup: (string | null)[] = THIRD_SLOTS.map(() => null);
+  const tryAssign = (g: string, seen: Set<number>): boolean => {
+    for (let s = 0; s < THIRD_SLOTS.length; s++) {
+      if (!THIRD_SLOTS[s].allowed.includes(g) || seen.has(s)) continue;
+      seen.add(s);
+      const cur = slotGroup[s];
+      if (cur === null || tryAssign(cur, seen)) {
+        slotGroup[s] = g;
+        return true;
+      }
+    }
+    return false;
+  };
+  for (const g of groupsSel) tryAssign(g, new Set());
+
+  const out: Record<number, string> = {};
+  THIRD_SLOTS.forEach((slot, s) => {
+    const g = slotGroup[s];
+    if (g) out[slot.index] = thirdByGroup.get(g)!;
   });
+  return out;
 }
 
-function resolveCode(code: string, groups: Groups, sortedThirds: string[]): string {
-  if (code.startsWith("T")) {
-    return sortedThirds[Number(code.slice(1))] ?? "";
-  }
+function resolveCode(
+  code: string,
+  groups: Groups,
+  thirdAssign: Record<number, string>,
+  matchIndex: number
+): string {
+  if (code === "3") return thirdAssign[matchIndex] ?? "";
   const pos = code[0] === "1" ? 0 : 1;
   const letter = code.slice(1);
   return groups[letter]?.[pos] ?? "";
@@ -94,9 +136,12 @@ export function matchParticipants(
   bracket: Bracket
 ): [string, string] {
   if (round === "r32") {
-    const sorted = sortThirds(thirds);
+    const assign = assignThirds(thirds);
     const [a, b] = R32_TEMPLATE[matchIndex];
-    return [resolveCode(a, groups, sorted), resolveCode(b, groups, sorted)];
+    return [
+      resolveCode(a, groups, assign, matchIndex),
+      resolveCode(b, groups, assign, matchIndex),
+    ];
   }
   const prevKey = ROUNDS[ROUNDS.findIndex((r) => r.key === round) - 1].key;
   const prev = bracket[prevKey];
