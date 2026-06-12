@@ -6,7 +6,6 @@ import {
   createUser,
   savePrediction as dbSavePrediction,
   saveResults as dbSaveResults,
-  hasPrediction,
   type Prediction,
 } from "@/lib/db";
 import { pruneBracket } from "@/lib/bracket";
@@ -22,11 +21,10 @@ import {
 // Crear participante (sin contraseña): solo nombre y email opcional.
 export async function createUserAction(formData: FormData): Promise<void> {
   const name = String(formData.get("name") || "").trim();
-  const email = String(formData.get("email") || "").trim();
   if (!name) redirect("/?error=nombre");
 
   const id = randomUUID();
-  await createUser(id, name, email || undefined);
+  await createUser(id, name);
   setUserCookie(id);
   redirect("/porra");
 }
@@ -36,12 +34,6 @@ export async function savePredictionAction(pred: Prediction): Promise<{ ok: bool
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "No has iniciado sesión." };
   if (isLocked()) return { ok: false, error: "Las porras están cerradas." };
-  // La porra es definitiva: una vez guardada no se puede modificar.
-  if (await hasPrediction(user.id))
-    return {
-      ok: false,
-      error: "Tu porra ya está guardada y no se puede modificar.",
-    };
 
   const cleaned: Prediction = {
     groups: pred.groups,

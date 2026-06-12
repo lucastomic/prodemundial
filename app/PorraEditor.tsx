@@ -59,17 +59,12 @@ export default function PorraEditor({
   const [pending, startTransition] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState("grupos");
-  const [confirming, setConfirming] = useState(false);
-  // Bloqueo local inmediato tras guardar (la porra de usuario es definitiva).
-  const [locallyLocked, setLocallyLocked] = useState(false);
 
-  const effectiveReadOnly = readOnly || locallyLocked;
-  const effectiveLockReason: "saved" | "deadline" | undefined = locallyLocked
-    ? "saved"
-    : lockReason;
+  // La porra solo es de solo lectura si las porras están cerradas (deadline).
+  const effectiveReadOnly = readOnly;
+  const effectiveLockReason = lockReason;
 
   function dirty() {
-    setConfirming(false);
     setSaved(false);
   }
 
@@ -109,12 +104,6 @@ export default function PorraEditor({
   }
 
   function save() {
-    // La porra de usuario es definitiva: pide confirmación explícita.
-    if (mode === "user" && !confirming) {
-      setConfirming(true);
-      return;
-    }
-    setConfirming(false);
     startTransition(async () => {
       const res = await onSave({ groups, thirds, bracket });
       if (res.ok) {
@@ -122,8 +111,7 @@ export default function PorraEditor({
         if (mode === "admin") {
           setToast("Resultados guardados correctamente ✓");
         } else {
-          setLocallyLocked(true);
-          setToast("Porra guardada. Ya no se puede modificar.");
+          setToast("Porra guardada ✓ Puedes seguir editándola.");
           router.refresh();
         }
       } else {
@@ -192,23 +180,15 @@ export default function PorraEditor({
         <p className="lead" style={{ marginTop: 8 }}>
           {mode === "admin"
             ? "Introduce el orden real de los grupos, los terceros clasificados y los ganadores reales. La clasificación se recalcula automáticamente."
-            : "Completa los tres pasos hasta tu campeón. Atención: al guardar, tu porra queda registrada de forma definitiva y no se podrá modificar."}
+            : "Completa los tres pasos hasta tu campeón. Puedes guardar y volver a editar tu porra todas las veces que quieras hasta que se cierren."}
         </p>
 
         {effectiveReadOnly && (
           <div style={{ marginTop: 18 }}>
-            {effectiveLockReason === "saved" ? (
-              <Banner kind="ok">
-                Tu porra ya está <b>guardada y bloqueada</b>. No se puede
-                modificar. ¡Mucha suerte! Sigue la clasificación para ver tus
-                puntos.
-              </Banner>
-            ) : (
-              <Banner kind="warn">
-                Las porras están <b>cerradas</b>. Esta es una vista de solo
-                lectura.
-              </Banner>
-            )}
+            <Banner kind="warn">
+              Las porras están <b>cerradas</b>. Esta es una vista de solo
+              lectura.
+            </Banner>
           </div>
         )}
 
@@ -252,11 +232,7 @@ export default function PorraEditor({
           <div className="save-bar-inner">
             <div className={`save-meta ${saved ? "saved" : ""}`}>
               <span className="dot"></span>
-              {confirming
-                ? "Revisa bien: el guardado es definitivo"
-                : saved
-                ? "Sin guardar todavía"
-                : "Cambios sin guardar"}
+              {saved ? "Todo guardado" : "Cambios sin guardar"}
             </div>
             {mode === "user" && resumeUrl && (
               <div className="token-link hide-sm">
@@ -264,25 +240,13 @@ export default function PorraEditor({
               </div>
             )}
             <div className="save-spacer"></div>
-            {confirming && !pending && (
-              <button
-                className="btn btn-ghost"
-                onClick={() => setConfirming(false)}
-              >
-                Cancelar
-              </button>
-            )}
             <button
-              className={`btn ${confirming ? "btn-danger" : "btn-primary"}`}
+              className="btn btn-primary"
               onClick={save}
               disabled={pending}
             >
               {pending ? (
                 "Guardando…"
-              ) : confirming ? (
-                <>
-                  <Icons.check size={16} /> Confirmar (definitivo)
-                </>
               ) : (
                 <>
                   <Icons.save size={16} />{" "}

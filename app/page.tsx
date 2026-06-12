@@ -179,18 +179,6 @@ export default async function HomePage({
                     required
                   />
                 </div>
-                <div className="field">
-                  <label className="label" htmlFor="email">
-                    Email <span className="opt">(opcional)</span>
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    className="input"
-                    type="email"
-                    placeholder="opcional"
-                  />
-                </div>
                 <button
                   className="btn btn-primary btn-lg"
                   type="submit"
